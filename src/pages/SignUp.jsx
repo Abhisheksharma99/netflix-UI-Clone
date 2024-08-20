@@ -1,10 +1,18 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Background from "../components/Background";
 import Header from "../components/Header";
 import styled from "styled-components";
+import { BsArrowBarRight } from "react-icons/bs";
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  sendEmailVerification
+} from "firebase/auth";
+import { firebaseAuth } from "../utils/firebase-config";
+import { useNavigate } from "react-router-dom";
 
 const Container = styled.div`
- position: relative;
+  position: relative;
   .content {
     position: absolute;
     top: 0;
@@ -33,6 +41,7 @@ const Container = styled.div`
           color: black;
           border: none;
           padding: 1.5rem;
+          margin-left: 0.25rem;
           font-size: 1.2rem;
           border: 1px solid black;
           &:focus {
@@ -43,10 +52,14 @@ const Container = styled.div`
           padding: 0.5rem 1rem;
           background-color: #e50914;
           border: none;
+          margin-left: 0.25rem;
           cursor: pointer;
           color: white;
           font-weight: bolder;
           font-size: 1.05rem;
+          .arrow {
+            padding-top: 0.25rem;
+          }
         }
       }
       button {
@@ -64,6 +77,34 @@ const Container = styled.div`
 `;
 
 export default function SignUp() {
+  const [showPassword, setShowPassword] = useState(false);
+  const [formValue, setFormValue] = useState({
+    email: "",
+    password: "",
+  });
+  const navigate = useNavigate();
+  const handleSignUp = async () => {
+    try {
+      const { email, password } = formValue;
+      await createUserWithEmailAndPassword(firebaseAuth, email, password)
+        .then((UserCredential) => {
+          sendEmailVerification(UserCredential.user);
+          firebaseAuth.signOut();
+          alert("Email Verification Sent");
+        })
+        .catch(alert);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+      useEffect(() => {
+        const unsubscribe =  onAuthStateChanged(firebaseAuth, (currentUser) => {
+          (currentUser && currentUser.emailVerified) &&  navigate("/");
+        });
+        return () => unsubscribe;
+      }, [navigate]);
+   
   return (
     <Container>
       <Background />
@@ -78,10 +119,39 @@ export default function SignUp() {
             </h6>
           </div>
           <div className="form">
-            <input type="email" placeholder="Email Address" name="email" />
-            <input type="password" placeholder="Password" name="password" />
-            <button>Get Started</button>
+            <input
+              type="email"
+              value={formValue.email}
+              onChange={(e) =>
+                setFormValue({ ...formValue, [e.target.name]: e.target.value })
+              }
+              placeholder="Email Address"
+              name="email"
+            />
+            {showPassword ? (
+              <input
+                type="password"
+                value={formValue.password}
+                onChange={(e) =>
+                  setFormValue({
+                    ...formValue,
+                    [e.target.name]: e.target.value,
+                  })
+                }
+                placeholder="Password"
+                name="password"
+              />
+            ) : (
+              <button
+                onClick={() => {
+                  setShowPassword(true);
+                }}
+              >
+                Get Started <BsArrowBarRight className="arrow"/>
+              </button>
+            )}
           </div>
+          {showPassword && <button onClick={handleSignUp}>Sign Up</button>}
         </div>
       </div>
     </Container>
